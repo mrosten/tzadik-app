@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Star of David (Magen David) using two interlaced triangles -->
+    <!-- Upward triangle -->
+    <path
+        android:pathData="M54,22 L86,78 L22,78 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round" />
+
+    <!-- Downward triangle -->
+    <path
+        android:pathData="M54,86 L22,30 L86,30 Z"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round" />
+</vector>
