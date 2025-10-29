@@ -1,83 +1,78 @@
 package com.example.webviewtest
 
+import android.content.Context
 import android.os.Bundle
+import android.webkit.WebSettings
+import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.webviewtest.ui.theme.WebViewTestTheme
-import kotlinx.coroutines.launch
-import android.content.Context
-import android.webkit.WebView
-import android.webkit.WebSettings
-import java.util.Locale
 import java.io.IOException
+import java.util.*
 
 // Data class to hold information about a Tzadik
- data class Tzadik(
+data class Tzadik(
     val id: Int,
     val name: String,
-    val description: String,
-    val descriptionIsHtml: Boolean = false,
-    val videoUrl: String? = null,
-    val imageUrl: String? = null,
-    val story: String? = null,
-    val storyIsHtml: Boolean = false
+    val nameHe: String,
+    var description: String,
+    var descriptionHe: String,
+    var descriptionIsHtml: Boolean = false,
+    var videoUrl: String? = null,
+    var imageUrl: String? = null,
+    var story: String? = null,
+    var storyHe: String? = null,
+    var storyIsHtml: Boolean = false
 )
 
 private val initialTzadikim = listOf(
-    Tzadik(1, "Baal Shem Tov", "Founder of Hasidism in 18th‑century Eastern Europe, he taught that every Jew can serve God with joy, simplicity, and heartfelt prayer. His teachings emphasized divine providence in every detail of life and the preciousness of even the simplest Jew. Through his disciples, he sparked a spiritual revival that transformed Jewish communities across the region."),
-    Tzadik(2, "Rashi", "Rabbi Shlomo Yitzhaki (1040–1105), the foremost commentator on the Torah and Talmud. His lucid explanations became the foundation for all subsequent study, clarifying difficult passages with precise language and sensitivity to pshat (plain meaning). Rashi's commentary remains universally studied in traditional and academic settings alike."),
-    Tzadik(3, "Rabbi Shimon bar Yochai", "2nd‑century Tanna and disciple of Rabbi Akiva, traditionally associated with the composition or transmission of the Zohar. He endured Roman persecution and taught profound mystical ideas that shaped Kabbalistic thought for centuries. His yahrzeit on Lag BaOmer is celebrated by countless Jews seeking inspiration and inner light."),
-    Tzadik(4, "Menachem Mendel Schneerson", "The Lubavitcher Rebbe (1902–1994), visionary leader who galvanized global Jewish outreach, education, and social services. His talks and letters guided people across the religious spectrum, emphasizing practical mitzvah observance, unconditional love for fellow Jews, and faith in the redemptive potential of every moment."),
-    Tzadik(5, "The Vilna Gaon", "Rabbi Elijah of Vilna (1720–1797), a towering Lithuanian sage and polymath whose mastery spanned Tanach, Talmud, Halacha, and Kabbalah. He championed careful text study, intellectual honesty, and personal piety, shaping the Lithuanian yeshiva tradition and leaving a vast scholarly legacy."),
-    Tzadik(6, "Rabbi Nachman of Breslov", "Great‑grandson of the Baal Shem Tov (1772–1810). He taught hitbodedut (personal, conversational prayer), joyous faith, and profound allegorical stories that speak to the soul. His path encourages honesty, persistence despite setbacks, and finding God even in darkness."),
-    Tzadik(7, "Rabbi Yosef Karo", "Author of the Shulchan Aruch (1488–1575), the seminal code of Jewish law synthesizing centuries of halachic rulings. Living in Safed, he combined rigorous legal analysis with spiritual aspiration, also recording mystical experiences in his work Maggid Meisharim."),
-    Tzadik(8, "The Chafetz Chaim", "Rabbi Yisrael Meir Kagan (1838–1933), who devoted his life to refining Jewish speech and daily observance. His works Sefer Chafetz Chaim and Mishnah Berurah became cornerstones of ethical conduct and halachic practice, inspiring communities to speak with care and live with integrity."),
-    Tzadik(9, "Rabbi Moshe Chaim Luzzatto", "Ramchal (1707–1746), brilliant thinker and kabbalist whose Mesillat Yesharim charts a clear path of moral refinement and closeness to God. He wrote dramas, ethical works, and mystical texts with striking clarity, uniting head and heart in divine service."),
-    Tzadik(10, "Rabbi Ovadia Yosef", "Sephardic Chief Rabbi of Israel (1920–2013), a prodigious posek who revitalized Sephardic halachic tradition for the modern era. His encyclopedic responsa and leadership empowered communities worldwide, balancing fidelity to sources with compassion for people's needs."),
-    Tzadik(11, "Rabbi Moshe Feinstein", "Preeminent 20th‑century halachic decisor whose Igrot Moshe addresses complex questions of modern life. With clarity, depth, and pastoral sensitivity, he guided communities through medical, technological, and social change while remaining firmly rooted in halacha."),
-    Tzadik(12, "The Rambam (Maimonides)", "Rabbi Moshe ben Maimon (1138–1204), philosopher, physician, and halachist. He authored the Mishneh Torah, an unparalleled codification of Jewish law, and The Guide for the Perplexed, exploring faith and reason. His rationalism and method continue to influence Jewish thought profoundly."),
-    Tzadik(13, "The Ramban (Nachmanides)", "Rabbi Moshe ben Nachman (1194–1270), leading commentator and kabbalist who integrated straightforward interpretation with mystical depth. A communal leader and physician, he also defended Judaism in public disputations and inspired generations with his balanced approach to text and spirit."),
-    Tzadik(14, "Rabbi Yehuda HaNasi", "Redactor of the Mishnah (2nd–3rd c.) whose monumental work preserved the Oral Torah in written form. A statesman and sage, he fostered unity among scholars and ensured the transmission of Torah for all subsequent generations."),
-    // Added 10 more tzadikim
-    Tzadik(15, "Rabbi Isaac Luria", "The Ari (1534–1572), whose teachings revolutionized Kabbalah with concepts of tzimtzum, shevirah, and tikkun. His circle in Safed, including Rabbi Chaim Vital, systematized practices and intentions that infused mitzvot with cosmic repair and personal transformation."),
-    Tzadik(16, "Rabbi Chaim of Volozhin", "Founding rosh yeshiva of Volozhin and foremost disciple of the Vilna Gaon. In Nefesh HaChaim he articulated a grand vision of Torah study as sustaining the spiritual fabric of the world, pairing rigorous learning with profound yirat Shamayim (awe of Heaven)."),
-    Tzadik(17, "Rabbi Elimelech of Lizhensk", "A central Hasidic master whose Noam Elimelech shaped the idea of the tzadik as a spiritual conduit. He emphasized warmth in prayer, meticulous mitzvah observance, and uplifting the simple faith of the people."),
-    Tzadik(18, "Rabbi Levi Yitzchak of Berditchev", "The beloved defender of Israel, renowned for his love of every Jew and his bold advocacy on their behalf before Heaven. His teachings radiate joy, compassion, and unshakeable trust in God's kindness."),
-    Tzadik(19, "Rabbi Shneur Zalman of Liadi", "The Alter Rebbe (1745–1812), founder of Chabad. In Tanya he mapped the inner landscape of the soul, guiding avodah with mind and heart in harmony. He also authored Shulchan Aruch HaRav, a lucid halachic code."),
-    Tzadik(20, "The Maggid of Mezritch", "Rabbi Dov Ber, successor to the Baal Shem Tov, who spread Hasidism through a generation of brilliant disciples. He deepened the movement's contemplative core while building networks that reshaped Jewish life across Eastern Europe."),
-    Tzadik(21, "The Chozeh of Lublin", "A prophetic Hasidic leader famed for penetrating spiritual insight. As a teacher of many rebbes, he helped seed diverse courts and approaches, all rooted in the search for God's presence in daily life."),
-    Tzadik(22, "The Sfat Emet", "Rabbi Yehudah Aryeh Leib Alter of Ger (1847–1905), whose teachings weave together emunah (faith), toil in Torah, and inner renewal. His discourses reveal layers of meaning in the calendar and parashiyot, calling for authenticity and courage."),
-    Tzadik(23, "The Netziv", "Rabbi Naftali Zvi Yehuda Berlin (1816–1893), rosh yeshiva of Volozhin. His Ha'amek Davar commentary highlights careful textual nuance and ethical sensitivity, modeling intellectual breadth anchored in tradition."),
-    Tzadik(24, "Rabbi Chaim Kanievsky", "A leading Lithuanian gadol (1928–2022) revered for extraordinary diligence and encyclopedic Torah knowledge. From his modest home he guided multitudes with brief, incisive rulings and an example of humility and unwavering commitment to learning.")
+    Tzadik(1, "Baal Shem Tov", "בעל שם טוב", "", ""),
+    Tzadik(2, "Rashi", "רש\"י", "", ""),
+    Tzadik(3, "Rabbi Shimon bar Yochai", "רבי שמעון בר יוחאי", "", ""),
+    Tzadik(4, "Menachem Mendel Schneerson", "הרבי מליובאוויטש", "", ""),
+    Tzadik(5, "The Vilna Gaon", "הגאון מווילנה", "", ""),
+    Tzadik(6, "Rabbi Nachman of Breslov", "רבי נחמן מברסלב", "", ""),
+    Tzadik(7, "Rabbi Yosef Karo", "רבי יוסף קארו", "", ""),
+    Tzadik(8, "The Chafetz Chaim", "החפץ חיים", "", ""),
+    Tzadik(9, "Rabbi Moshe Chaim Luzzatto", "רמח\"ל", "", ""),
+    Tzadik(10, "Rabbi Ovadia Yosef", "הרב עובדיה יוסף", "", ""),
+    Tzadik(11, "Rabbi Moshe Feinstein", "הרב משה פיינשטיין", "", ""),
+    Tzadik(12, "The Rambam (Maimonides)", "רמב\"ם", "", ""),
+    Tzadik(13, "The Ramban (Nachmanides)", "רמב\"ן", "", ""),
+    Tzadik(14, "Rabbi Yehuda HaNasi", "רבי יהודה הנשיא", "", ""),
+    Tzadik(15, "Rabbi Isaac Luria", "האר\"י", "", ""),
+    Tzadik(16, "Rabbi Chaim of Volozhin", "רבי חיים מוולוז'ין", "", ""),
+    Tzadik(17, "Rabbi Elimelech of Lizhensk", "רבי אלימלך מליז'נסק", "", ""),
+    Tzadik(18, "Rabbi Levi Yitzchak of Berditchev", "רבי לוי יצחק מברדיטשב", "", ""),
+    Tzadik(19, "Rabbi Shneur Zalman of Liadi", "רבי שניאור זלמן מליאדי", "", ""),
+    Tzadik(20, "The Maggid of Mezritch", "המגיד ממזריטש", "", ""),
+    Tzadik(21, "The Chozeh of Lublin", "החוזה מלובלין", "", ""),
+    Tzadik(22, "The Sfat Emet", "השפת אמת", "", ""),
+    Tzadik(23, "The Netziv", "הנצי\"ב", "", ""),
+    Tzadik(24, "Rabbi Chaim Kanievsky", "הרב חיים קניבסקי", "", "")
 )
 
 class MainActivity : ComponentActivity() {
@@ -85,42 +80,80 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             WebViewTestTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    TzadikimPager()
-                }
+                MainApp()
             }
         }
     }
 }
 
 @Composable
-fun TzadikimPager() {
+fun MainApp() {
+    var language by remember { mutableStateOf<String?>(null) }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        if (language == null) {
+            LanguageSelectionScreen { selectedLang ->
+                language = selectedLang
+            }
+        } else {
+            TzadikimPager(language = language!!)
+        }
+    }
+}
+
+@Composable
+fun LanguageSelectionScreen(onLanguageSelected: (String) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Select Language / בחר שפה", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { onLanguageSelected("en") }) {
+            Text("English", fontSize = 20.sp)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { onLanguageSelected("he") }) {
+            Text("עברית", fontSize = 20.sp)
+        }
+    }
+}
+
+
+@Composable
+fun TzadikimPager(language: String) {
     val context = LocalContext.current
     val tzadikim = remember { mutableStateListOf<Tzadik>() }
+    val isHebrew = language == "he"
+    var textZoom by remember { mutableStateOf(100) } // State is now lifted here
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(language) {
         // Load local media and description overrides first
-        val initial = initialTzadikim.map { base ->
+        val loadedTzadikim = initialTzadikim.map { base ->
             val candidates = slugCandidates(base.name)
             val video = candidates.firstNotNullOfOrNull { slug -> findLocalVideoAsset(context, slug) }
             val image = candidates.firstNotNullOfOrNull { slug -> findLocalImageAsset(context, slug) }
-            val longDesc = candidates.firstNotNullOfOrNull { slug -> findLocalDescriptionAsset(context, slug) }
-            val storyDesc = candidates.firstNotNullOfOrNull { slug -> findLocalStoriesAsset(context, slug) }
-            base.copy(
-                description = longDesc?.text ?: base.description,
-                descriptionIsHtml = longDesc?.isHtml ?: false,
-                videoUrl = video,
-                imageUrl = image,
-                story = storyDesc?.text,
-                storyIsHtml = storyDesc?.isHtml ?: false
-            )
+            val longDesc = candidates.firstNotNullOfOrNull { slug -> findLocalDescriptionAsset(context, slug, isHebrew) }
+            val story = candidates.firstNotNullOfOrNull { slug -> findLocalStoriesAsset(context, slug, isHebrew) }
+
+            base.apply {
+                val currentDesc = longDesc?.text ?: if (isHebrew) base.descriptionHe else base.description
+                val currentStory = story?.text ?: if (isHebrew) base.storyHe else base.story
+                description = currentDesc
+                descriptionHe = currentDesc
+                descriptionIsHtml = longDesc?.isHtml ?: story?.isHtml ?: false
+                videoUrl = video
+                imageUrl = image
+                this.story = currentStory
+                this.storyHe = currentStory
+            }
         }
         tzadikim.clear()
-        tzadikim.addAll(initial)
-
+        tzadikim.addAll(loadedTzadikim)
     }
 
     val list = tzadikim
@@ -137,13 +170,23 @@ fun TzadikimPager() {
                 .weight(1f)
                 .fillMaxSize()
         ) { page ->
-            FlippableTzadikCard(tzadik = list[page])
+            FlippableTzadikCard(
+                tzadik = list[page],
+                isHebrew = isHebrew,
+                textZoom = textZoom,
+                onTextZoomChange = { newZoom -> textZoom = newZoom }
+            )
         }
     }
 }
 
 @Composable
-fun FlippableTzadikCard(tzadik: Tzadik) {
+fun FlippableTzadikCard(
+    tzadik: Tzadik,
+    isHebrew: Boolean,
+    textZoom: Int,
+    onTextZoomChange: (Int) -> Unit
+) {
     var isFlipped by remember { mutableStateOf(false) }
 
     val rotation by animateFloatAsState(
@@ -167,25 +210,28 @@ fun FlippableTzadikCard(tzadik: Tzadik) {
         shape = RoundedCornerShape(0.dp)
     ) {
         if (rotation < 90f) {
-            TzadikVideo(tzadik, onTap = { isFlipped = !isFlipped })
+            TzadikVideo(tzadik = tzadik, isHebrew = isHebrew, onTap = { isFlipped = !isFlipped })
         } else {
-            // Flipped view
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        rotationY = 180f // Counter-rotate the content
-                    },
+                    .graphicsLayer { rotationY = 180f },
                 contentAlignment = Alignment.Center
             ) {
-                TzadikInfo(tzadik, onTap = { isFlipped = !isFlipped })
+                TzadikInfo(
+                    tzadik = tzadik,
+                    isHebrew = isHebrew,
+                    textZoom = textZoom,
+                    onTextZoomChange = onTextZoomChange,
+                    onTap = { isFlipped = !isFlipped }
+                )
             }
         }
     }
 }
 
 @Composable
-fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
+fun TzadikVideo(tzadik: Tzadik, isHebrew: Boolean, onTap: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         val videoUrl = tzadik.videoUrl
         val imageUrl = tzadik.imageUrl
@@ -195,12 +241,8 @@ fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     factory = { context ->
                         WebView(context).apply {
-                            settings.apply {
-                                javaScriptEnabled = false
-                                domStorageEnabled = false
-                                mediaPlaybackRequiresUserGesture = false
-                                cacheMode = WebSettings.LOAD_NO_CACHE
-                            }
+                            settings.javaScriptEnabled = false
+                            settings.mediaPlaybackRequiresUserGesture = false
                             setBackgroundColor(android.graphics.Color.BLACK)
                         }
                     },
@@ -208,17 +250,16 @@ fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
                         val html = """
                             <html>
                               <head>
-                                <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
+                                <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'/>
                                 <style>
-                                  html,body { margin:0; height:100%; background:black; }
-                                  .wrap { position:fixed; inset:0; overflow:hidden; background:black; }
-                                  video { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                                          min-width:100%; min-height:100%; width:auto; height:auto; object-fit:cover; }
+                                  html, body { margin: 0; padding: 0; height: 100%; background: #000; }
+                                  .wrap { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; background: #000; }
+                                  video { width: 100%; height: 100%; object-fit: contain; display: block; }
                                 </style>
                               </head>
                               <body>
                                 <div class='wrap'>
-                                  <video src='${videoUrl}' autoplay loop muted playsinline></video>
+                                  <video src='$videoUrl' autoplay loop muted playsinline></video>
                                 </div>
                               </body>
                             </html>
@@ -232,32 +273,14 @@ fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     factory = { context ->
                         WebView(context).apply {
-                            settings.apply {
-                                javaScriptEnabled = false
-                                domStorageEnabled = false
-                                cacheMode = WebSettings.LOAD_NO_CACHE
-                            }
+                            settings.javaScriptEnabled = false
                             setBackgroundColor(android.graphics.Color.BLACK)
                         }
                     },
                     update = { webView ->
                         val html = """
-                            <html>
-                              <head>
-                                <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-                                <style>
-                                  html,body { margin:0; height:100%; background:black; }
-                                  .wrap { position:fixed; inset:0; overflow:hidden; background:black; }
-                                  img { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                                        min-width:100%; min-height:100%; width:auto; height:auto; object-fit:cover; }
-                                </style>
-                              </head>
-                              <body>
-                                <div class='wrap'>
-                                  <img src='${imageUrl}' alt='portrait'/>
-                                </div>
-                              </body>
-                            </html>
+                            <html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/><style>html,body{margin:0;height:100%;background:black;}img{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);min-width:100%;min-height:100%;width:auto;height:auto;object-fit:cover;}</style></head>
+                            <body><img src='$imageUrl' alt='portrait'/></body></html>
                         """.trimIndent()
                         webView.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
                     }
@@ -265,195 +288,134 @@ fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
             }
             else -> {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No media available",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = "No media available", color = Color.White)
                 }
             }
         }
 
-        // Gradient scrim at bottom for text readability
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .height(120.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
-                    )
-                )
+                .background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))))
         )
 
         Text(
-            text = tzadik.name,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-            ),
+            text = if (isHebrew) tzadik.nameHe else tzadik.name,
+            style = MaterialTheme.typography.headlineSmall.copy(color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp),
+            textAlign = if (isHebrew) TextAlign.End else TextAlign.Start,
             modifier = Modifier
-                .align(Alignment.BottomStart)
+                .align(if (isHebrew) Alignment.BottomEnd else Alignment.BottomStart)
+                .fillMaxWidth()
                 .padding(16.dp)
         )
 
-        // Transparent tap-capture overlay to enable flipping on top of WebView/image
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = { onTap() })
-                }
+            modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
         )
     }
 }
 
 @Composable
-fun TzadikInfo(tzadik: Tzadik, onTap: () -> Unit) {
-    val hasStory = tzadik.story != null
+fun TzadikInfo(
+    tzadik: Tzadik,
+    isHebrew: Boolean,
+    textZoom: Int,
+    onTextZoomChange: (Int) -> Unit,
+    onTap: () -> Unit
+) {
+    val content = if (isHebrew) tzadik.descriptionHe else tzadik.description
+    val isHtml = tzadik.descriptionIsHtml
     val topBarHeight = 56.dp
-    var showStory by remember { mutableStateOf(false) }
-    var textZoom by remember { mutableStateOf(100) } // 100% default
+    val bottomBarHeight = 48.dp
 
-    if (tzadik.descriptionIsHtml || (hasStory && tzadik.storyIsHtml)) {
-        // Full-screen HTML with top controls (Article/Stories, text size) and scroll buttons
+    if (isHtml) {
         val webViewRef = remember { mutableStateOf<WebView?>(null) }
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             AndroidView(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
                 factory = { context ->
                     WebView(context).apply {
-                        settings.apply {
-                            javaScriptEnabled = false
-                            domStorageEnabled = false
-                            cacheMode = WebSettings.LOAD_NO_CACHE
-                            textZoom = textZoom
-                        }
+                        settings.javaScriptEnabled = false
                         setBackgroundColor(android.graphics.Color.BLACK)
                     }.also { wv -> webViewRef.value = wv }
                 },
                 update = { webView ->
-                    // Choose content based on toggle
-                    val htmlContent: String = if (showStory && hasStory) {
-                        val s = tzadik.story ?: ""
-                        if (tzadik.storyIsHtml) s else "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/>" +
-                                "<style>body{margin:0;padding:16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.5;white-space:pre-wrap;}</style></head><body>" +
-                                escapeHtml(s) + "</body></html>"
-                    } else {
-                        if (tzadik.descriptionIsHtml) tzadik.description else "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/>" +
-                                "<style>body{margin:0;padding:16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.5;white-space:pre-wrap;}</style></head><body>" +
-                                escapeHtml(tzadik.description) + "</body></html>"
-                    }
                     webView.settings.textZoom = textZoom
-                    webView.loadDataWithBaseURL(
-                        "file:///android_asset/",
-                        htmlContent,
-                        "text/html",
-                        "UTF-8",
-                        null
-                    )
+                    val dir = if (isHebrew) "rtl" else "ltr"
+                    val textAlign = if (isHebrew) "right" else "left"
+                    val css = "body{margin:0;padding:${topBarHeight.value}px 16px ${bottomBarHeight.value}px 16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.6;text-align:$textAlign;}"
+                    val wrappedContent = "<html dir=\"$dir\"><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/><style>$css</style></head><body>$content</body></html>"
+                    webView.loadDataWithBaseURL("file:///android_asset/", wrappedContent, "text/html", "UTF-8", null)
                 }
             )
 
-            // Top control bar: toggle and text size
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(topBarHeight)
                     .align(Alignment.TopCenter)
                     .background(Color(0xAA000000))
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.End
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Button(
-                        onClick = { showStory = false },
-                        enabled = true,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) { Text("Article") }
-                    if (hasStory) {
-                        androidx.compose.material3.Button(
-                            onClick = { showStory = true },
-                            enabled = true
-                        ) { Text("Stories") }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Button(
-                        onClick = { textZoom = (textZoom - 10).coerceAtLeast(50); webViewRef.value?.settings?.textZoom = textZoom },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) { Text("A-") }
-                    androidx.compose.material3.Button(
-                        onClick = { textZoom = (textZoom + 10).coerceAtMost(250); webViewRef.value?.settings?.textZoom = textZoom }
-                    ) { Text("A+") }
-                }
+                Button(onClick = { onTextZoomChange((textZoom - 10).coerceAtLeast(50)) }, modifier = Modifier.padding(end = 8.dp)) { Text("A-") }
+                Button(onClick = { onTextZoomChange((textZoom + 10).coerceAtMost(250)) }) { Text("A+") }
             }
-
-            // Top full-width scroll-up button; long-press flips the card (placed below top bar)
-            androidx.compose.material3.Button(
-                onClick = { webViewRef.value?.pageUp(false) },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(top = topBarHeight)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = { onTap() }
-                        )
-                    }
-            ) {
-                Text(text = "▲ Scroll up")
-            }
-
-            // Bottom full-width scroll-down button; long-press also flips the card
-            androidx.compose.material3.Button(
-                onClick = { webViewRef.value?.pageDown(false) },
-                modifier = Modifier
-                    .fillMaxWidth()
+                    .height(bottomBarHeight)
                     .align(Alignment.BottomCenter)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = { onTap() }
-                        )
-                    }
-            ) {
-                Text(text = "▼ Scroll down")
-            }
+                    .background(Color(0xAA000000))
+            )
         }
     } else {
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(scrollState)
-                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                text = tzadik.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+        // Render plain text/markdown-like content as simple HTML
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
+                factory = { context ->
+                    WebView(context).apply {
+                        settings.javaScriptEnabled = false
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                    }
+                },
+                update = { webView ->
+                    webView.settings.textZoom = textZoom
+                    val dir = if (isHebrew) "rtl" else "ltr"
+                    val textAlign = if (isHebrew) "right" else "left"
+                    val css = "body{margin:0;padding:${topBarHeight.value}px 16px ${bottomBarHeight.value}px 16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.6;text-align:$textAlign;} pre{white-space:pre-wrap;}"
+                    val safe = escapeHtml(content)
+                    val wrappedContent = "<html dir=\"$dir\"><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/><style>$css</style></head><body><pre>$safe</pre></body></html>"
+                    webView.loadDataWithBaseURL("file:///android_asset/", wrappedContent, "text/html", "UTF-8", null)
+                }
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = tzadik.description,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Tap anywhere to flip back.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(topBarHeight)
+                    .align(Alignment.TopCenter)
+                    .background(Color(0xAA000000))
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(onClick = { onTextZoomChange((textZoom - 10).coerceAtLeast(50)) }, modifier = Modifier.padding(end = 8.dp)) { Text("A-") }
+                Button(onClick = { onTextZoomChange((textZoom + 10).coerceAtMost(250)) }) { Text("A+") }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(bottomBarHeight)
+                    .align(Alignment.BottomCenter)
+                    .background(Color(0xAA000000))
             )
         }
     }
@@ -475,23 +437,13 @@ private fun stripLeadingWord(input: String, word: String): String {
 }
 
 private fun slugCandidates(name: String): List<String> {
-    // Generate tolerant slug candidates to match typical folder names users might create.
-    // We accept the canonical slug, and variants without leading "Rabbi " or "The ".
     val variants = LinkedHashSet<String>()
     fun addVariant(n: String) { variants.add(nameToSlug(n)) }
 
     val original = name.trim()
-    val noRabbi = stripLeadingWord(original, "Rabbi ")
-    val noThe = stripLeadingWord(original, "The ")
-    val noRabbiThenThe = stripLeadingWord(noRabbi, "The ")
-    val noTheThenRabbi = stripLeadingWord(noThe, "Rabbi ")
-
     addVariant(original)
-    addVariant(noRabbi)
-    addVariant(noThe)
-    addVariant(noRabbiThenThe)
-    addVariant(noTheThenRabbi)
-
+    addVariant(stripLeadingWord(original, "Rabbi "))
+    addVariant(stripLeadingWord(original, "The "))
     return variants.toList()
 }
 
@@ -506,9 +458,7 @@ private fun assetFileExists(context: Context, path: String): Boolean {
 
 private fun readAssetText(context: Context, path: String): String? {
     return try {
-        context.assets.open(path).use { input ->
-            input.readBytes().toString(Charsets.UTF_8)
-        }
+        context.assets.open(path).use { it.readBytes().toString(Charsets.UTF_8) }
     } catch (_: IOException) {
         null
     }
@@ -516,83 +466,67 @@ private fun readAssetText(context: Context, path: String): String? {
 
 private data class LoadedDescription(val text: String, val isHtml: Boolean)
 
-private fun findLocalDescriptionAsset(context: Context, slug: String): LoadedDescription? {
+private fun findLocalDescriptionAsset(context: Context, slug: String, isHebrew: Boolean): LoadedDescription? {
+    val lang = if (isHebrew) "he" else "en"
     val base = "tzadikim/$slug/"
-    val html = "description.html"
-    val md = "description.md"
-    val txt = "description.txt"
 
-    // Prefer HTML if present
-    if (assetFileExists(context, base + html)) {
-        val text = readAssetText(context, base + html)
-        if (text != null) return LoadedDescription(text = text, isHtml = true)
+    // Try language-specific HTML first
+    val htmlLang = "description_${lang}.html"
+    if (assetFileExists(context, base + htmlLang)) {
+        readAssetText(context, base + htmlLang)?.let { return LoadedDescription(it, true) }
     }
-    // Then Markdown (treated as plain text for now)
-    if (assetFileExists(context, base + md)) {
-        val text = readAssetText(context, base + md)
-        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    // Then language-specific Markdown
+    val mdLang = "description_${lang}.md"
+    if (assetFileExists(context, base + mdLang)) {
+        readAssetText(context, base + mdLang)?.let { return LoadedDescription(it, false) }
     }
-    // Then plain text
-    if (assetFileExists(context, base + txt)) {
-        val text = readAssetText(context, base + txt)
-        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    // Then generic HTML
+    val htmlGeneric = "description.html"
+    if (assetFileExists(context, base + htmlGeneric)) {
+        readAssetText(context, base + htmlGeneric)?.let { return LoadedDescription(it, true) }
+    }
+    // Then generic Markdown
+    val mdGeneric = "description.md"
+    if (assetFileExists(context, base + mdGeneric)) {
+        readAssetText(context, base + mdGeneric)?.let { return LoadedDescription(it, false) }
     }
     return null
 }
 
-private fun findLocalStoriesAsset(context: Context, slug: String): LoadedDescription? {
+private fun findLocalStoriesAsset(context: Context, slug: String, isHebrew: Boolean): LoadedDescription? {
+    val lang = if (isHebrew) "he" else "en"
     val base = "tzadikim/$slug/"
-    val html = "stories.html"
-    val md = "stories.md"
-    val txt = "stories.txt"
+    val htmlFileName = "stories_${lang}.html"
 
-    if (assetFileExists(context, base + html)) {
-        val text = readAssetText(context, base + html)
-        if (text != null) return LoadedDescription(text = text, isHtml = true)
-    }
-    if (assetFileExists(context, base + md)) {
-        val text = readAssetText(context, base + md)
-        if (text != null) return LoadedDescription(text = text, isHtml = false)
-    }
-    if (assetFileExists(context, base + txt)) {
-        val text = readAssetText(context, base + txt)
-        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    if (assetFileExists(context, base + htmlFileName)) {
+        readAssetText(context, base + htmlFileName)?.let {
+            return LoadedDescription(text = it, isHtml = true)
+        }
     }
     return null
 }
 
 private fun escapeHtml(text: String): String {
-    return text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;")
 }
 
 private fun findLocalVideoAsset(context: Context, slug: String): String? {
-    // Look under app/src/main/assets/tzadikim/<slug>/ for these filenames
     val base = "tzadikim/$slug/"
-    val candidates = listOf(
+    listOf(
         "clip.mp4",
+        "clip2.mp4",
         "video.mp4",
         "portrait.mp4"
-    )
-    val found = candidates.firstOrNull { name -> assetFileExists(context, base + name) }
-    return found?.let { name -> "file:///android_asset/" + base + name }
+    ).firstOrNull { assetFileExists(context, base + it) }?.let {
+        return "file:///android_asset/$base$it"
+    }
+    return null
 }
 
 private fun findLocalImageAsset(context: Context, slug: String): String? {
-    // If no MP4 is present, we can use a specially named image file
-    // Look under app/src/main/assets/tzadikim/<slug>/ for these filenames
     val base = "tzadikim/$slug/"
-    val candidates = listOf(
-        "portrait.webp",
-        "portrait.jpg",
-        "portrait.jpeg",
-        "portrait.png"
-    )
-    val found = candidates.firstOrNull { name -> assetFileExists(context, base + name) }
-    return found?.let { name -> "file:///android_asset/" + base + name }
+    listOf("portrait.webp", "portrait.jpg", "portrait.png").firstOrNull { assetFileExists(context, base + it) }?.let {
+        return "file:///android_asset/$base$it"
+    }
+    return null
 }
-
