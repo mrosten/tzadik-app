@@ -59,5 +59,15 @@ Image guidance (used only if no MP4)
 - WebP is recommended for size/quality. Aim under ~200–400 KB if possible.
 
 Notes
-- The app does not fetch anything from Wikipedia or the network.
+- Long descriptions are supported and must be stored locally. Place ONE of the following in the same tzadik folder (first one found wins):
+  - description.html (preferred; paste the full article HTML here for the tzadik)
+  - description.md (Markdown; treated as plain text)
+  - description.txt (plain text)
+- Optional Stories: You can add personal notes, anecdotes, or extra sources separate from the main article. Place ONE of the following files (first one found wins):
+  - stories.html (preferred; supports rich formatting, images, links)
+  - stories.md (Markdown; treated as plain text)
+  - stories.txt (plain text)
+- In the app, tap the back of a card to open the article. If a stories file exists, you can switch between Article and Stories from the top bar. Use A−/A+ on the top bar to change text size. Use the top/bottom full‑width buttons to scroll up/down; long‑press either to flip back to media.
+- No online fetching: The app does not fetch Wikipedia or any remote content. To see full articles, download/copy the text yourself and place it in description.html (recommended) for each tzadik.
 - Assets are bundled offline. If neither MP4 nor image is found, the card shows a "No media available" message.
+- Licensing: If you include Wikipedia text, remember it is licensed under CC BY-SA. Include an attribution note and a link back to the source within your description.html (and in stories.html if applicable).

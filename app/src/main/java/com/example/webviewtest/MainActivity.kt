@@ -45,8 +45,11 @@ import java.io.IOException
     val id: Int,
     val name: String,
     val description: String,
+    val descriptionIsHtml: Boolean = false,
     val videoUrl: String? = null,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val story: String? = null,
+    val storyIsHtml: Boolean = false
 )
 
 private val initialTzadikim = listOf(
@@ -95,16 +98,29 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TzadikimPager() {
-    var tzadikim by remember { mutableStateOf<List<Tzadik>>(emptyList()) }
     val context = LocalContext.current
+    val tzadikim = remember { mutableStateListOf<Tzadik>() }
 
     LaunchedEffect(Unit) {
-        tzadikim = initialTzadikim.map { base ->
+        // Load local media and description overrides first
+        val initial = initialTzadikim.map { base ->
             val candidates = slugCandidates(base.name)
             val video = candidates.firstNotNullOfOrNull { slug -> findLocalVideoAsset(context, slug) }
             val image = candidates.firstNotNullOfOrNull { slug -> findLocalImageAsset(context, slug) }
-            base.copy(videoUrl = video, imageUrl = image)
+            val longDesc = candidates.firstNotNullOfOrNull { slug -> findLocalDescriptionAsset(context, slug) }
+            val storyDesc = candidates.firstNotNullOfOrNull { slug -> findLocalStoriesAsset(context, slug) }
+            base.copy(
+                description = longDesc?.text ?: base.description,
+                descriptionIsHtml = longDesc?.isHtml ?: false,
+                videoUrl = video,
+                imageUrl = image,
+                story = storyDesc?.text,
+                storyIsHtml = storyDesc?.isHtml ?: false
+            )
         }
+        tzadikim.clear()
+        tzadikim.addAll(initial)
+
     }
 
     val list = tzadikim
@@ -148,7 +164,7 @@ fun FlippableTzadikCard(tzadik: Tzadik) {
                 )
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        shape = androidx.compose.foundation.shape.RectangleShape
+        shape = RoundedCornerShape(0.dp)
     ) {
         if (rotation < 90f) {
             TzadikVideo(tzadik, onTap = { isFlipped = !isFlipped })
@@ -162,7 +178,7 @@ fun FlippableTzadikCard(tzadik: Tzadik) {
                     },
                 contentAlignment = Alignment.Center
             ) {
-                TzadikInfo(tzadik)
+                TzadikInfo(tzadik, onTap = { isFlipped = !isFlipped })
             }
         }
     }
@@ -300,32 +316,146 @@ fun TzadikVideo(tzadik: Tzadik, onTap: () -> Unit) {
 }
 
 @Composable
-fun TzadikInfo(tzadik: Tzadik) {
-    val scrollState = rememberScrollState()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.Start
-    ) {
-        Text(
-            text = tzadik.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = tzadik.description,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Tap anywhere to flip back.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
+fun TzadikInfo(tzadik: Tzadik, onTap: () -> Unit) {
+    val hasStory = tzadik.story != null
+    val topBarHeight = 56.dp
+    var showStory by remember { mutableStateOf(false) }
+    var textZoom by remember { mutableStateOf(100) } // 100% default
+
+    if (tzadik.descriptionIsHtml || (hasStory && tzadik.storyIsHtml)) {
+        // Full-screen HTML with top controls (Article/Stories, text size) and scroll buttons
+        val webViewRef = remember { mutableStateOf<WebView?>(null) }
+        Box(modifier = Modifier.fillMaxSize()) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    WebView(context).apply {
+                        settings.apply {
+                            javaScriptEnabled = false
+                            domStorageEnabled = false
+                            cacheMode = WebSettings.LOAD_NO_CACHE
+                            textZoom = textZoom
+                        }
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                    }.also { wv -> webViewRef.value = wv }
+                },
+                update = { webView ->
+                    // Choose content based on toggle
+                    val htmlContent: String = if (showStory && hasStory) {
+                        val s = tzadik.story ?: ""
+                        if (tzadik.storyIsHtml) s else "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/>" +
+                                "<style>body{margin:0;padding:16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.5;white-space:pre-wrap;}</style></head><body>" +
+                                escapeHtml(s) + "</body></html>"
+                    } else {
+                        if (tzadik.descriptionIsHtml) tzadik.description else "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'/>" +
+                                "<style>body{margin:0;padding:16px;color:#eee;background:#000;font-family:sans-serif;line-height:1.5;white-space:pre-wrap;}</style></head><body>" +
+                                escapeHtml(tzadik.description) + "</body></html>"
+                    }
+                    webView.settings.textZoom = textZoom
+                    webView.loadDataWithBaseURL(
+                        "file:///android_asset/",
+                        htmlContent,
+                        "text/html",
+                        "UTF-8",
+                        null
+                    )
+                }
+            )
+
+            // Top control bar: toggle and text size
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(topBarHeight)
+                    .align(Alignment.TopCenter)
+                    .background(Color(0xAA000000))
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Button(
+                        onClick = { showStory = false },
+                        enabled = true,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) { Text("Article") }
+                    if (hasStory) {
+                        androidx.compose.material3.Button(
+                            onClick = { showStory = true },
+                            enabled = true
+                        ) { Text("Stories") }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Button(
+                        onClick = { textZoom = (textZoom - 10).coerceAtLeast(50); webViewRef.value?.settings?.textZoom = textZoom },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) { Text("A-") }
+                    androidx.compose.material3.Button(
+                        onClick = { textZoom = (textZoom + 10).coerceAtMost(250); webViewRef.value?.settings?.textZoom = textZoom }
+                    ) { Text("A+") }
+                }
+            }
+
+            // Top full-width scroll-up button; long-press flips the card (placed below top bar)
+            androidx.compose.material3.Button(
+                onClick = { webViewRef.value?.pageUp(false) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(top = topBarHeight)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { onTap() }
+                        )
+                    }
+            ) {
+                Text(text = "▲ Scroll up")
+            }
+
+            // Bottom full-width scroll-down button; long-press also flips the card
+            androidx.compose.material3.Button(
+                onClick = { webViewRef.value?.pageDown(false) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { onTap() }
+                        )
+                    }
+            ) {
+                Text(text = "▼ Scroll down")
+            }
+        }
+    } else {
+        val scrollState = rememberScrollState()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(scrollState)
+                .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) },
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = tzadik.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = tzadik.description,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Tap anywhere to flip back.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+        }
     }
 }
 
@@ -374,6 +504,72 @@ private fun assetFileExists(context: Context, path: String): Boolean {
     }
 }
 
+private fun readAssetText(context: Context, path: String): String? {
+    return try {
+        context.assets.open(path).use { input ->
+            input.readBytes().toString(Charsets.UTF_8)
+        }
+    } catch (_: IOException) {
+        null
+    }
+}
+
+private data class LoadedDescription(val text: String, val isHtml: Boolean)
+
+private fun findLocalDescriptionAsset(context: Context, slug: String): LoadedDescription? {
+    val base = "tzadikim/$slug/"
+    val html = "description.html"
+    val md = "description.md"
+    val txt = "description.txt"
+
+    // Prefer HTML if present
+    if (assetFileExists(context, base + html)) {
+        val text = readAssetText(context, base + html)
+        if (text != null) return LoadedDescription(text = text, isHtml = true)
+    }
+    // Then Markdown (treated as plain text for now)
+    if (assetFileExists(context, base + md)) {
+        val text = readAssetText(context, base + md)
+        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    }
+    // Then plain text
+    if (assetFileExists(context, base + txt)) {
+        val text = readAssetText(context, base + txt)
+        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    }
+    return null
+}
+
+private fun findLocalStoriesAsset(context: Context, slug: String): LoadedDescription? {
+    val base = "tzadikim/$slug/"
+    val html = "stories.html"
+    val md = "stories.md"
+    val txt = "stories.txt"
+
+    if (assetFileExists(context, base + html)) {
+        val text = readAssetText(context, base + html)
+        if (text != null) return LoadedDescription(text = text, isHtml = true)
+    }
+    if (assetFileExists(context, base + md)) {
+        val text = readAssetText(context, base + md)
+        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    }
+    if (assetFileExists(context, base + txt)) {
+        val text = readAssetText(context, base + txt)
+        if (text != null) return LoadedDescription(text = text, isHtml = false)
+    }
+    return null
+}
+
+private fun escapeHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+}
+
 private fun findLocalVideoAsset(context: Context, slug: String): String? {
     // Look under app/src/main/assets/tzadikim/<slug>/ for these filenames
     val base = "tzadikim/$slug/"
@@ -399,3 +595,4 @@ private fun findLocalImageAsset(context: Context, slug: String): String? {
     val found = candidates.firstOrNull { name -> assetFileExists(context, base + name) }
     return found?.let { name -> "file:///android_asset/" + base + name }
 }
+
